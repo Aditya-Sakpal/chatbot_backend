@@ -1,11 +1,11 @@
 from fastapi import FastAPI
 
+from routers.query_router import router as query_router
+
 app = FastAPI()
 
 @app.get("/")
 def read_root():
     return {"message": "Hello World"}
 
-if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000)
-
+app.include_router(query_router, prefix="/api/v1", tags=["query"])
