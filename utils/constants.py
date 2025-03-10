@@ -13,12 +13,14 @@ Query :
 """
 
 QUERY_CLASSIFICATION_SYSTEM_PROMPT="""
-You are a query classification model that categorizes user queries into one of three types: 'garbage', 'greet', or 'actual'. Respond in strict JSON format: { "type": "type" }.
+You are a query classification model that categorizes user queries into one of four types: 'garbage', 'greet', 'actual', or 'cost_effective_analysis'. Respond in strict JSON format: { "type": "type" }.
 
-Classify as 'garbage' if the query is gibberish or nonsensical.
-Classify as 'greet' if the query is a greeting in any form.
-Classify as 'actual' if the query does not fit the above categories.
-Output only the JSON response without any additional text
+Classify as 'garbage' if the query is gibberish or nonsensical.  
+Classify as 'greet' if the query is a greeting in any form.  
+Classify as 'cost_effective_analysis' if the query involves cost-effectiveness comparisons, such as evaluating the cost benefits of different options (e.g., Fresh vs Frozen Embryo, CT vs MRI, or any other cost-based comparison).  
+Classify as 'actual' if the query does not fit the above categories.  
+
+Output only the JSON response without any additional text.
 """
 
 QUERY_CLASSIFICATION_USER_PROMPT="""
@@ -38,3 +40,35 @@ GREET_USER_PROMPT="""
 Query :
 {query}
 """
+
+COST_EFFECTIVE_ANALYSIS_SYSTEM_PROMPT="""
+    Based on the following research text, extract key data points relevant to the cost-effectiveness analysis of provided query.
+
+    - Identify the **main categories** for a pie chart (e.g., different cost components, effectiveness measures, treatment methods).
+    - Identify **comparative numerical values** for a bar chart (e.g., cost-effectiveness ratios, success rates, budgetary impacts).
+
+    Output format (JSON):
+    {{
+        "pie_chart": {{
+        "categories": ["Category1", "Category2", "Category3", "Category4"],
+        "values": [X1, X2, X3, X4]
+        }},
+        "bar_chart": {{
+        "labels": ["Comparison1", "Comparison2"],
+        "values": [Y1, Y2]
+        }}
+    }}
+"""
+
+COST_EFFECTIVE_ANALYSIS_USER_PROMPT="""
+    Query :
+    {query}
+    
+    Text:
+    {articles_context}
+"""
+
+
+articles_search_url = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi"
+
+articles_fetch_url = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi"

@@ -7,8 +7,11 @@ from fastapi.responses import JSONResponse
 from schemas.query_schema import QueryRequest, QueryResponse
 from utils.logger import log_performance, logger
 from utils.openai_funcs import get_openai_response
-from utils.constants import QUERY_CLASSIFICATION_USER_PROMPT, QUERY_CLASSIFICATION_SYSTEM_PROMPT, GREET_USER_PROMPT, GREET_SYSTEM_PROMPT, RESPONSE_GENERATION_USER_PROMPT, RESPONSE_GENERATION_SYSTEM_PROMPT
+from utils.constants import QUERY_CLASSIFICATION_USER_PROMPT, QUERY_CLASSIFICATION_SYSTEM_PROMPT , \
+GREET_USER_PROMPT, GREET_SYSTEM_PROMPT, RESPONSE_GENERATION_USER_PROMPT, RESPONSE_GENERATION_SYSTEM_PROMPT , \
+COST_EFFECTIVE_ANALYSIS_SYSTEM_PROMPT , COST_EFFECTIVE_ANALYSIS_USER_PROMPT
 from utils.pinecone_funcs import retrieve_chunks
+from utils.helpers import retreive_articles
 
 router = APIRouter()
 
@@ -52,6 +55,31 @@ async def query(request: QueryRequest):
                 messages=request.messages,
                 is_json=False
             )
+            
+        elif type == "cost_effective_analysis":
+            articles_context = retreive_articles(request.query)
+            messages = []
+            messages.append(
+                {
+                    "role": "system",
+                    "content": COST_EFFECTIVE_ANALYSIS_SYSTEM_PROMPT,
+                }
+            )
+            messages.append(
+                                {
+                    "role": "user",
+                    "content": COST_EFFECTIVE_ANALYSIS_USER_PROMPT.format(
+                        query=request.query,
+                        articles_context=articles_context
+                    )
+                }
+            )
+            response = get_openai_response(
+                messages=messages,
+                is_json=True
+            )
+            
+            
         else:
             chunks = retrieve_chunks(
                 namespace="chatbot",
@@ -80,7 +108,7 @@ async def query(request: QueryRequest):
                 is_json=False
             )
 
-        return JSONResponse(content={"message": response})
+        return JSONResponse(content={"message": response , "is_graph": type == "cost_effective_analysis"})
     except Exception as e:
         logger.error(f"Error in query router: {traceback.format_exc()}")
         return JSONResponse(content={"message": "Internal Server Error"}, status_code=500)
