@@ -52,7 +52,8 @@ def retreive_articles(
             if abstract is not None :
                 articles_context += "Abstract : "
                 for text in abstract:
-                    articles_context += text.text 
+                    if text.text is not None:
+                        articles_context += text.text 
             else:
                 logger.info("Abstract not found")
             

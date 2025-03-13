@@ -108,7 +108,7 @@ async def query(request: QueryRequest):
                 is_json=False
             )
 
-        return JSONResponse(content={"message": response , "is_graph": type == "cost_effective_analysis"})
+        return JSONResponse(content={"message": json.loads(response) , "is_graph": type == "cost_effective_analysis"})
     except Exception as e:
         logger.error(f"Error in query router: {traceback.format_exc()}")
         return JSONResponse(content={"message": "Internal Server Error"}, status_code=500)
