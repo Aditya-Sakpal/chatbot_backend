@@ -66,6 +66,7 @@ COST_EFFECTIVE_ANALYSIS_SYSTEM_PROMPT=COST_EFFECTIVE_ANALYSIS_SYSTEM_PROMPT = ""
         }},
         "articles": [
             {{
+                "article_id": "",
                 "title": "",
                 "modality": "",
                 "organ": "",

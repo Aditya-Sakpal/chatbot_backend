@@ -13,3 +13,15 @@ class QueryHistoryRequest(BaseModel):
 
 class QueryHistoryResponse(BaseModel):
     message: list[dict]
+
+class BubbleGraphDetailsRequest(BaseModel):
+    query_id: str
+
+class BubbleGraphDetailsResponse(BaseModel):
+    data: list[dict]
+
+class DescriptiveAnalysisRequest(BaseModel):
+    query_id: str
+
+class DescriptiveAnalysisResponse(BaseModel):
+    data: dict

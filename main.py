@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from routers.query_router import router as query_router
 from routers.users_router import router as users_router
+from routers.data_upload_router import router as data_upload_router
 
 app = FastAPI()
 
@@ -20,3 +21,4 @@ def read_root():
 
 app.include_router(query_router, prefix="/api/v1", tags=["query"])
 app.include_router(users_router, prefix="/api/v1", tags=["users"])
+app.include_router(data_upload_router, prefix="/api/v1", tags=["data_upload"])
