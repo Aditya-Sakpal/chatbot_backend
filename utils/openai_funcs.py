@@ -1,14 +1,7 @@
-import os 
 import traceback
 
-from dotenv import load_dotenv
-from openai import OpenAI
 from utils.logger import logger
-
-load_dotenv()
-client = OpenAI(
-    api_key=os.getenv("OPENAI_API_KEY")
-)
+from utils.initialize import client
 
 def get_embeddings(
     text : str

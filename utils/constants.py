@@ -41,24 +41,43 @@ Query :
 {query}
 """
 
-COST_EFFECTIVE_ANALYSIS_SYSTEM_PROMPT="""
-    Based on the following research text, extract key data points relevant to the cost-effectiveness analysis of provided query.
+COST_EFFECTIVE_ANALYSIS_SYSTEM_PROMPT=COST_EFFECTIVE_ANALYSIS_SYSTEM_PROMPT = """
+    Based on the provided research articles, extract key data points relevant to the cost-effectiveness analysis of the given query.
 
+    **Tasks:**
     - Identify the **main categories** for a pie chart (e.g., different cost components, effectiveness measures, treatment methods).
     - Identify **comparative numerical values** for a bar chart (e.g., cost-effectiveness ratios, success rates, budgetary impacts).
+    - Extract details for each article, including:
+      - **Modality**: The method or treatment used.
+      - **Organ**: The organ involved in the study.
+      - **Disease**: The medical condition or disease analyzed.
+      - **Result**: The key findings or outcomes.
+      - **Year**: The publication year.
 
-    Output format (JSON):
+    **Output format (JSON):**
     {{
         "pie_chart": {{
-        "categories": ["Category1", "Category2", "Category3", "Category4"],
-        "values": [X1, X2, X3, X4]
+            "categories": ["Category1", "Category2", "Category3", "Category4"],
+            "values": [X1, X2, X3, X4]
         }},
         "bar_chart": {{
-        "labels": ["Comparison1", "Comparison2"],
-        "values": [Y1, Y2]
-        }}
+            "labels": ["Comparison1", "Comparison2"],
+            "values": [Y1, Y2]
+        }},
+        "articles": [
+            {{
+                "article_id": "",
+                "title": "",
+                "modality": "",
+                "organ": "",
+                "disease": "",
+                "result": "",
+                "year": ""
+            }}
+        ]
     }}
 """
+
 
 COST_EFFECTIVE_ANALYSIS_USER_PROMPT="""
     Query :

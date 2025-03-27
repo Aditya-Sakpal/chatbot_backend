@@ -1,11 +1,13 @@
 import traceback
 import xml.etree.ElementTree as ET
+import uuid
 
 import requests
 
 from utils.logger import logger
 
 from utils.constants import articles_search_url,articles_fetch_url
+from utils.db_operations import connect_to_db
 
 def retreive_articles(
     query : str
@@ -41,25 +43,67 @@ def retreive_articles(
         fetch_root = ET.fromstring(fetch_response.content)
         
         articles_context = ""
-        
+        articles = []
         for article in fetch_root.findall(".//PubmedArticle"):
+            article_dict = {}
+            article_id = "article_"+str(uuid.uuid4())
+            articles_context += "Article ID : " + article_id + "\n"
+            article_dict['article_id'] = article_id
             title = article.find(".//ArticleTitle").text
             articles_context += "Article Title : " + title + "\n"
+            article_dict['title'] = title
             logger.info(f"Title : {title}") 
 
             abstract = article.findall(".//AbstractText")
-
+            article_dict['abstract'] = ""
             if abstract is not None :
                 articles_context += "Abstract : "
                 for text in abstract:
                     if text.text is not None:
                         articles_context += text.text 
+                        article_dict['abstract'] += text.text
             else:
                 logger.info("Abstract not found")
             
             articles_context += "\n\n"
-        
-        return articles_context
+            articles.append(article_dict)
+        return articles_context , articles
     except Exception as e :
         logger.error(f"Error in retrieving articles : {traceback.format_exc()}")
         raise e
+    
+def retreive_modality_count(
+    query_id : str
+):
+    """
+    Retrieve modality count from the database
+
+    Args:
+        query_id : str : Query ID
+
+    Returns:
+        modality_count : list[dict] : Modality count
+    """
+    try:
+        conn = connect_to_db()
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM query_history WHERE query_id = %s", (query_id,))
+        bubble_graph_details = cursor.fetchall()
+
+        modality_count = {}
+        articles_details = []
+        for detail in bubble_graph_details:
+            modality_count[detail[1]] = modality_count.get(detail[1], 0) + 1
+            articles_details.append({'article_id': detail[7], 'article_title': detail[8]})
+
+        modality_count = sorted(modality_count.items(), key=lambda x: x[1], reverse=True)
+
+        return modality_count , articles_details
+    except Exception as e:
+        logger.error(f"Error in retrieving bubble graph details : {traceback.format_exc()}")
+        raise e
+    finally:
+        cursor.close()
+        conn.close()
+
+
