@@ -22,4 +22,4 @@ splitter = SemanticSplitterNodeParser(
     breakpoint_percentile_threshold=95, 
     embed_model=embed_model
 )
-client = OpenAI()
+openai_client = OpenAI()

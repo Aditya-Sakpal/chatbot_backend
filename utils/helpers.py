@@ -1,6 +1,6 @@
 import traceback
 import xml.etree.ElementTree as ET
-import uuid
+from typing import Optional
 
 import requests
 
@@ -10,7 +10,8 @@ from utils.constants import articles_search_url,articles_fetch_url
 from utils.db_operations import connect_to_db
 
 def retreive_articles(
-    query : str
+    query : str,
+    article_id_for_duplicacy_check : Optional[str] = None
 ):
     """
     Retrieve articles from PubMed based on the query provided
@@ -46,7 +47,11 @@ def retreive_articles(
         articles = []
         for article in fetch_root.findall(".//PubmedArticle"):
             article_dict = {}
-            article_id = "article_"+str(uuid.uuid4())
+            article_id = article.find(".//ArticleId").text
+
+            if article_id_for_duplicacy_check is not None and article_id == article_id_for_duplicacy_check:
+                continue
+            
             articles_context += "Article ID : " + article_id + "\n"
             article_dict['article_id'] = article_id
             title = article.find(".//ArticleTitle").text
