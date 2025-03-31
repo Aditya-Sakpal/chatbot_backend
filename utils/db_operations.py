@@ -19,6 +19,7 @@ def connect_to_db():
         conn: psycopg2.connection
     """ 
     try:
+        print(os.getenv("DB_URL"),type(os.getenv("DB_URL")))
         conn = psycopg2.connect(os.getenv("DB_URL"))
         return conn
     except Exception as e:
