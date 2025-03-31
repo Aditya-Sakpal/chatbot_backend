@@ -5,7 +5,9 @@ import uuid
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 
-from schemas.query_schema import QueryRequest, QueryResponse, QueryHistoryRequest, QueryHistoryResponse, BubbleGraphDetailsRequest, BubbleGraphDetailsResponse, DescriptiveAnalysisRequest, DescriptiveAnalysisResponse
+from schemas.query_schema import QueryRequest, QueryResponse, QueryHistoryRequest, QueryHistoryResponse, BubbleGraphDetailsRequest,\
+BubbleGraphDetailsResponse, DescriptiveAnalysisRequest, DescriptiveAnalysisResponse, SaveSettingsRequest, SaveSettingsResponse, GetSettingsRequest, GetSettingsResponse ,\
+GetLatestRelevantPublicationsRequest, GetLatestRelevantPublicationsResponse
 from utils.logger import log_performance, logger
 from utils.openai_funcs import get_openai_response
 from utils.constants import QUERY_CLASSIFICATION_USER_PROMPT, QUERY_CLASSIFICATION_SYSTEM_PROMPT , \
@@ -13,7 +15,8 @@ GREET_USER_PROMPT, GREET_SYSTEM_PROMPT, RESPONSE_GENERATION_USER_PROMPT, RESPONS
 COST_EFFECTIVE_ANALYSIS_SYSTEM_PROMPT , COST_EFFECTIVE_ANALYSIS_USER_PROMPT
 from utils.pinecone_funcs import retrieve_chunks
 from utils.helpers import retreive_articles, retreive_modality_count
-from utils.db_operations import insert_query_history, retrieve_query_history, retrieve_descriptive_analysis
+from utils.db_operations import insert_query_history, retrieve_query_history, retrieve_descriptive_analysis, save_chatbot_settings , get_chatbot_settings ,\
+      get_saved_articles_ids , get_articles_from_query_history 
 
 router = APIRouter()
 
@@ -32,6 +35,9 @@ async def query_api(request: QueryRequest):
         QueryResponse 
     """
     try:
+        # Get user's settings
+        settings = request.settings
+        
         type = get_openai_response(
             messages=[
                 {
@@ -40,7 +46,11 @@ async def query_api(request: QueryRequest):
                 },
                 {
                     "role": "user",
-                    "content": QUERY_CLASSIFICATION_USER_PROMPT.format(query=request.query)
+                    "content": QUERY_CLASSIFICATION_USER_PROMPT.format(
+                        query=request.query,
+                        language=settings.language,
+                        tonality=settings.tonality
+                    )
                 }
             ],
             is_json=True
@@ -60,16 +70,21 @@ async def query_api(request: QueryRequest):
             request.messages.append(
                 {
                     "role": "user",
-                    "content": GREET_USER_PROMPT.format(query=request.query)
+                    "content": GREET_USER_PROMPT.format(
+                        query=request.query,
+                        language=settings.language,
+                        tonality=settings.tonality
+                    )
                 }
             )
             response = get_openai_response(
                 messages=request.messages,
-                is_json=False
+                is_json=False,
+                max_tokens=request.settings.get('tokens', 1000)
             )
             
         elif type == "cost_effective_analysis":
-            articles_context , articles = retreive_articles(request.query)
+            articles_context, articles = retreive_articles(request.query)
 
             messages = []
             messages.append(
@@ -79,11 +94,13 @@ async def query_api(request: QueryRequest):
                 }
             )
             messages.append(
-                                {
+                {
                     "role": "user",
                     "content": COST_EFFECTIVE_ANALYSIS_USER_PROMPT.format(
                         query=request.query,
-                        articles_context=articles_context
+                        articles_context=articles_context,
+                        language=settings.language,
+                        tonality=settings.tonality   
                     )
                 }
             )
@@ -112,7 +129,6 @@ async def query_api(request: QueryRequest):
                 pie_chart,
                 bar_chart
             )
-
             
         else:
             chunks = retrieve_chunks(
@@ -133,16 +149,19 @@ async def query_api(request: QueryRequest):
                     "role": "user",
                     "content": RESPONSE_GENERATION_USER_PROMPT.format(
                         context=context,
-                        query=request.query
+                        query=request.query,
+                        language=settings['language'],
+                        tonality=settings['tonality']
                     )
                 }
             )
             response = get_openai_response(
                 messages=request.messages,
-                is_json=False
+                is_json=False,
+                max_tokens=request.settings.get('tokens', 1000)
             )
 
-        return JSONResponse(content={"message": response , "is_graph": type == "cost_effective_analysis"})
+        return JSONResponse(content={"message": response, "is_graph": type == "cost_effective_analysis"})
     except Exception as e:
         logger.error(f"Error in query router: {traceback.format_exc()}")
         return JSONResponse(content={"message": f"Internal Server Error {e}"}, status_code=500)
@@ -204,4 +223,84 @@ async def get_descriptive_analysis_api(request: DescriptiveAnalysisRequest):
         return JSONResponse(content={"pie_chart": pie_chart, "bar_chart": bar_chart})
     except Exception as e:
         logger.error(f"Error in get descriptive analysis router: {traceback.format_exc()}")
+        return JSONResponse(content={"message": f"Internal Server Error {e}"}, status_code=500)
+
+@log_performance
+@router.post("/save_settings", response_model=SaveSettingsResponse)
+async def save_settings_api(request: SaveSettingsRequest):
+    """
+    Save chatbot settings for a user
+    
+    Args:
+        request: SaveSettingsRequest - Request containing user_id and settings
+        
+    Returns:
+        SaveSettingsResponse - Success message
+    """
+    try:
+        result = save_chatbot_settings(
+            user_id=request.user_id,
+            tonality=request.settings.tonality,
+            language=request.settings.language,
+            use_knowledge_base=request.settings.use_knowledge_base,
+            tokens=request.settings.tokens
+        )
+
+        if result:  
+            return JSONResponse(
+                status_code=200,
+                content={"message": "Settings saved successfully"}
+            )
+        else:
+            return JSONResponse(
+                status_code=400,
+                content={"message": "Failed to save settings"}
+            )
+    except Exception as e:
+        logger.error(f"Error saving settings: {traceback.format_exc()}")
+        return JSONResponse(
+            status_code=500,
+            content={"message": f"Error saving settings: {str(e)}"}
+        )
+
+@log_performance
+@router.post("/get_settings", response_model=GetSettingsResponse)
+async def get_settings_api(request: GetSettingsRequest):
+    """
+    Get chatbot settings for a user
+    
+    Args:
+        request: GetSettingsRequest - Request containing user_id
+        
+    Returns:
+        GetSettingsResponse - Chatbot settings
+    """
+    try:
+        settings = get_chatbot_settings(request.user_id)
+        return JSONResponse(content={"settings": settings}, status_code=200)
+    except Exception as e:
+        logger.error(f"Error in get settings router: {traceback.format_exc()}")
+        return JSONResponse(content={"message": f"Internal Server Error {e}"}, status_code=500)
+    
+
+@log_performance
+@router.post("/get_latest_relevant_publications", response_model=GetLatestRelevantPublicationsResponse)
+async def get_latest_relevant_publications_api(request: GetLatestRelevantPublicationsRequest):
+    """
+    Get latest relevant publications for a user
+    """
+    try:
+        saved_articles_ids = get_saved_articles_ids(request.user_id)
+
+        articles_details = get_articles_from_query_history(saved_articles_ids)
+
+        lastest_relevant_publications =  []
+
+        for article in articles_details:
+            _ , latest_relevant_publications = retreive_articles(article[8], article[7])
+            lastest_relevant_publications.extend(latest_relevant_publications)
+        
+        return JSONResponse(content={"lastest_relevant_publications": lastest_relevant_publications})
+    except Exception as e:
+        logger.error(f"Error in get latest relevant publications router: {traceback.format_exc()}")
         return JSONResponse(content={"message": f"Internal Server Error {e}"}, status_code=500)

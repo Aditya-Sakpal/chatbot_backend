@@ -126,22 +126,42 @@ def retrieve_query_history(
         cursor.close()
         conn.close()
 
-def save_articles(
-    user_id: str,
-    article_ids: list[str]
-):
+def save_articles(user_id: str, article_ids: list[str]):
     """
-    Save articles in the database
+    Save articles in the database.
+    If the user already exists, append new article_ids while ensuring uniqueness.
     """
     try:
         conn = connect_to_db()
         cursor = conn.cursor()
-        cursor.execute("INSERT INTO saved_articles (user_id, saved_article_ids) VALUES (%s, %s)", (user_id, article_ids))
+        
+        cursor.execute("SELECT saved_article_ids FROM saved_articles WHERE user_id = %s", (user_id,))
+        result = cursor.fetchone()
+        
+        if result:
+            # User exists, merge article_ids with existing ones
+            existing_article_ids = set(result[0])  # Convert array to set for uniqueness
+            new_article_ids = set(article_ids)  # Convert input list to set
+            updated_article_ids = list(existing_article_ids | new_article_ids)  # Merge and remove duplicates
+
+            cursor.execute(
+                "UPDATE saved_articles SET saved_article_ids = %s WHERE user_id = %s",
+                (updated_article_ids, user_id)
+            )
+        else:
+            # User does not exist, insert new record
+            cursor.execute(
+                "INSERT INTO saved_articles (user_id, saved_article_ids) VALUES (%s, %s)",
+                (user_id, article_ids)
+            )
+        
         conn.commit()
         return {"message": "Articles saved successfully"}
+
     except Exception as e:
-        logger.error(f"Error saving articles: {traceback.format_exc()}")
+        print(f"Error saving articles: {traceback.format_exc()}")
         raise e
+
     finally:
         cursor.close()
         conn.close()
@@ -561,6 +581,149 @@ def get_user_documents(user_id: str) -> list[str]:
         return result[0] if result and result[0] else []
     except Exception as e:
         logger.error(f"Error getting user documents: {traceback.format_exc()}")
+        raise e
+    finally:
+        cursor.close()
+        conn.close()
+
+def save_chatbot_settings(
+    user_id: str,
+    tonality: int,
+    language: str,
+    use_knowledge_base: bool,
+    tokens: int
+):
+    """
+    Save or update chatbot settings for a user
+    
+    Args:
+        user_id (str): The user ID
+        tonality (int): Tonality value (1-5)
+        language (str): Selected language
+        use_knowledge_base (bool): Whether to use knowledge base
+        tokens (int): Number of tokens
+        
+    Returns:
+        dict: Success message
+    """
+    try:
+        conn = connect_to_db()
+        cursor = conn.cursor()
+        
+        # Check if settings exist for user
+        cursor.execute("""
+            SELECT setting_id 
+            FROM chatbot_settings 
+            WHERE user_id = %s
+        """, (user_id,))
+        
+        existing = cursor.fetchone()
+        
+        if existing:
+            # Update existing settings
+            cursor.execute("""
+                UPDATE chatbot_settings
+                SET tonality = %s,
+                    language = %s,
+                    use_knowledge_base = %s,
+                    tokens = %s,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE user_id = %s
+            """, (tonality, language, use_knowledge_base, tokens, user_id))
+        else:
+            # Insert new settings
+            cursor.execute("""
+                INSERT INTO chatbot_settings 
+                (user_id, tonality, language, use_knowledge_base, tokens)
+                VALUES (%s, %s, %s, %s, %s)
+            """, (user_id, tonality, language, use_knowledge_base, tokens))
+            
+        conn.commit()
+        logger.info(f"Chatbot settings saved for user {user_id}")
+        return {"message": "Settings saved successfully"}
+    except Exception as e:
+        logger.error(f"Error saving chatbot settings: {traceback.format_exc()}")
+        raise e
+    finally:
+        cursor.close()
+        conn.close()
+
+
+def get_chatbot_settings(user_id: str) -> dict:
+    """
+    Get chatbot settings for a user
+    
+    Args:
+        user_id (str): The user ID
+
+    Returns:
+        dict: Chatbot settings
+    """
+    try:
+        conn = connect_to_db()
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            SELECT tonality, language, use_knowledge_base, model
+            FROM chatbot_settings
+            WHERE user_id = %s
+        """, (user_id,))
+
+        settings = cursor.fetchone()    
+        return {
+            "tonality": settings[0],
+            "language": settings[1],
+            "use_knowledge_base": settings[2],
+            "model": settings[3]
+        }
+    except Exception as e:
+        logger.error(f"Error getting chatbot settings: {traceback.format_exc()}")
+        raise e
+    finally:
+        cursor.close()
+        conn.close()
+
+def get_saved_articles_ids(user_id: str) -> list[str]:
+    """
+    Get saved articles for a user
+    """
+    try:
+        conn = connect_to_db()  
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            SELECT saved_article_ids
+            FROM saved_articles
+            WHERE user_id = %s
+        """, (user_id,))
+
+        result = cursor.fetchone()
+        return result[0] if result and result[0] else []
+    except Exception as e:  
+        logger.error(f"Error in saved articles: {traceback.format_exc()}")
+        raise e
+    finally:
+        cursor.close()
+        conn.close()
+
+def get_articles_from_query_history(article_ids: list[str]) -> list[dict]:
+    """
+    Get articles from query history
+    """
+    try:
+        conn = connect_to_db()
+        cursor = conn.cursor()
+
+        # Ensure article_ids is a tuple for the IN clause
+        query = """
+            SELECT * FROM query_history WHERE article_id = ANY(%s)
+        """
+        cursor.execute(query, (article_ids,))  # Pass as a single-element tuple
+
+        result = cursor.fetchall()
+        return result
+    except Exception as e:
+        logger.error(f"Error in get articles from query history: {traceback.format_exc()}")
         raise e
     finally:
         cursor.close()

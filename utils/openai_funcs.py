@@ -1,7 +1,8 @@
 import traceback
+from typing import Optional
 
 from utils.logger import logger
-from utils.initialize import client
+from utils.initialize import openai_client
 
 def get_embeddings(
     text : str
@@ -16,7 +17,7 @@ def get_embeddings(
         embeddings : list : The embeddings of the text as a list
     """
     try:
-        response = client.embeddings.create(
+        response = openai_client.embeddings.create(
             model="text-embedding-3-large",
             input=text
         )
@@ -27,15 +28,18 @@ def get_embeddings(
 
 def get_openai_response(
     messages : list ,
-    is_json : bool = False
+    is_json : bool = False,
+    tokens : Optional[int] = None
 ):
     try:
-        response = client.chat.completions.create(
+        response = openai_client.chat.completions.create(
             model="gpt-4o-mini",
             messages=messages,
             temperature=0.7,
+            max_tokens=tokens,
             response_format={ "type": "json_object" } if is_json else None
-        )
+            )
+
         return response.choices[0].message.content
     except Exception as e:
         logger.error(f"Error in get_openai_response: {traceback.format_exc()}")

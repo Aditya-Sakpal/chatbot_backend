@@ -1,9 +1,4 @@
-from pydantic import BaseModel
-
-class QueryRequest(BaseModel):
-    query: str
-    user_id: str
-    messages : list
+from pydantic import BaseModel, Field
 
 class QueryResponse(BaseModel):
     message: str
@@ -25,3 +20,35 @@ class DescriptiveAnalysisRequest(BaseModel):
 
 class DescriptiveAnalysisResponse(BaseModel):
     data: dict
+
+class ChatbotSettings(BaseModel):
+    tonality: int
+    language: str
+    use_knowledge_base: bool
+    tokens: int
+    
+class QueryRequest(BaseModel):
+    query: str
+    user_id: str
+    messages: list[dict]
+    settings: ChatbotSettings
+
+class SaveSettingsRequest(BaseModel):
+    user_id: str
+    settings: ChatbotSettings
+
+class SaveSettingsResponse(BaseModel):
+    message: str
+
+class GetSettingsRequest(BaseModel):
+    user_id: str
+
+class GetSettingsResponse(BaseModel):
+    settings: ChatbotSettings
+
+class GetLatestRelevantPublicationsRequest(BaseModel):
+    user_id: str
+
+class GetLatestRelevantPublicationsResponse(BaseModel):
+    lastest_relevant_publications: list[dict]
+
