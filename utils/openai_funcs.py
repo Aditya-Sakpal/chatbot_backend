@@ -29,14 +29,14 @@ def get_embeddings(
 def get_openai_response(
     messages : list ,
     is_json : bool = False,
-    tokens : Optional[int] = None
+    max_tokens : Optional[int] = None
 ):
     try:
         response = openai_client.chat.completions.create(
             model="gpt-4o-mini",
             messages=messages,
             temperature=0.7,
-            max_tokens=tokens,
+            max_tokens=max_tokens,
             response_format={ "type": "json_object" } if is_json else None
             )
 

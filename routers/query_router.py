@@ -80,7 +80,7 @@ async def query_api(request: QueryRequest):
             response = get_openai_response(
                 messages=request.messages,
                 is_json=False,
-                max_tokens=request.settings.get('tokens', 1000)
+                max_tokens=settings.tokens
             )
             
         elif type == "cost_effective_analysis":
@@ -158,7 +158,7 @@ async def query_api(request: QueryRequest):
             response = get_openai_response(
                 messages=request.messages,
                 is_json=False,
-                max_tokens=request.settings.get('tokens', 1000)
+                max_tokens=settings.tokens
             )
 
         return JSONResponse(content={"message": response, "is_graph": type == "cost_effective_analysis"})

@@ -664,7 +664,7 @@ def get_chatbot_settings(user_id: str) -> dict:
         cursor = conn.cursor()
 
         cursor.execute("""
-            SELECT tonality, language, use_knowledge_base, model
+            SELECT tonality, language, use_knowledge_base, tokens
             FROM chatbot_settings
             WHERE user_id = %s
         """, (user_id,))
@@ -674,7 +674,7 @@ def get_chatbot_settings(user_id: str) -> dict:
             "tonality": settings[0],
             "language": settings[1],
             "use_knowledge_base": settings[2],
-            "model": settings[3]
+            "tokens": settings[3]
         }
     except Exception as e:
         logger.error(f"Error getting chatbot settings: {traceback.format_exc()}")
